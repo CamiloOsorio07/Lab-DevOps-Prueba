@@ -1,0 +1,89 @@
+trigger:
+  - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages:
+  # 1. BUILD Y PRUEBAS (CI)
+  - stage: CI
+    displayName: 'CI - Build & Test'
+    jobs:
+      - job: BuildAndPackage
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: '24.x'
+            displayName: 'Instalar Node v24'
+
+          - script: npm ci
+            displayName: 'Instalar dependencias'
+
+          - script: npm test
+            displayName: 'Ejecutar pruebas'
+
+          - task: ArchiveFiles@2
+            displayName: 'Empaquetar artefacto'
+            inputs:
+              rootFolderOrFile: '$(System.DefaultWorkingDirectory)'
+              includeRootFolder: false
+              archiveType: 'zip'
+              archiveFile: '$(Build.ArtifactStagingDirectory)/app-$(Build.BuildId).zip'
+              replaceExistingArchive: true
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publicar artefacto'
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+              ArtifactName: 'drop'
+
+  # 2. AMBIENTE DEV
+  - stage: DEV
+    displayName: 'Deploy DEV'
+    dependsOn: CI
+    condition: succeeded()
+    jobs:
+      - deployment: DeployDEV
+        environment: 'DEV'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - script: |
+                    echo "Desplegando versión $(Build.BuildId) en DEV"
+                    echo "APP_ENVIRONMENT=DEV"
+                  displayName: 'Simular Despliegue DEV'
+
+  # 3. AMBIENTE QA
+  - stage: QA
+    displayName: 'Deploy QA'
+    dependsOn: DEV
+    condition: succeeded()
+    jobs:
+      - deployment: DeployQA
+        environment: 'QA'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - script: |
+                    echo "Desplegando versión $(Build.BuildId) en QA"
+                    echo "APP_ENVIRONMENT=QA"
+                  displayName: 'Simular Despliegue QA'
+
+  # 4. AMBIENTE PDN (Protegido)
+  - stage: PDN
+    displayName: 'Deploy PDN'
+    dependsOn: QA
+    condition: succeeded()
+    jobs:
+      - deployment: DeployPDN
+        environment: 'PDN'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - script: |
+                    echo "Desplegando versión $(Build.BuildId) en PDN"
+                    echo "APP_ENVIRONMENT=PDN"
+                  displayName: 'Simular Despliegue PDN'
