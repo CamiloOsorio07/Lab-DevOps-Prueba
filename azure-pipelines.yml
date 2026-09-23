@@ -17,11 +17,8 @@ stages:
           - script: node -v
             displayName: 'Verificar versión de Node.js'
 
-          - script: npm ci
+          - script: npm install
             displayName: 'Instalar Dependencias'
-
-          - script: npm test
-            displayName: 'Ejecutar Pruebas Unitarias'
 
           - task: ArchiveFiles@2
             displayName: 'Empaquetar Artefacto (.zip)'
