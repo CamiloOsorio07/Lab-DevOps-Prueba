@@ -5,25 +5,26 @@ pool:
   vmImage: 'ubuntu-latest'
 
 stages:
-  # 1. BUILD Y PRUEBAS (CI)
+  # -------------------------------------------------------------
+  # STAGE 1: CI (Build, Test y Publicación del Artefacto)
+  # -------------------------------------------------------------
   - stage: CI
     displayName: 'CI - Build & Test'
     jobs:
       - job: BuildAndPackage
+        displayName: 'Build and Archive'
         steps:
-          - task: NodeTool@0
-            inputs:
-              versionSpec: '24.x'
-            displayName: 'Instalar Node v24'
+          - script: node -v
+            displayName: 'Verificar versión de Node.js'
 
           - script: npm ci
-            displayName: 'Instalar dependencias'
+            displayName: 'Instalar Dependencias'
 
           - script: npm test
-            displayName: 'Ejecutar pruebas'
+            displayName: 'Ejecutar Pruebas Unitarias'
 
           - task: ArchiveFiles@2
-            displayName: 'Empaquetar artefacto'
+            displayName: 'Empaquetar Artefacto (.zip)'
             inputs:
               rootFolderOrFile: '$(System.DefaultWorkingDirectory)'
               includeRootFolder: false
@@ -32,12 +33,15 @@ stages:
               replaceExistingArchive: true
 
           - task: PublishBuildArtifacts@1
-            displayName: 'Publicar artefacto'
+            displayName: 'Publicar Artefacto en Azure DevOps'
             inputs:
               PathtoPublish: '$(Build.ArtifactStagingDirectory)'
               ArtifactName: 'drop'
+              publishLocation: 'Container'
 
-  # 2. AMBIENTE DEV
+  # -------------------------------------------------------------
+  # STAGE 2: DESPLIEGUE A DEV
+  # -------------------------------------------------------------
   - stage: DEV
     displayName: 'Deploy DEV'
     dependsOn: CI
@@ -50,11 +54,13 @@ stages:
             deploy:
               steps:
                 - script: |
-                    echo "Desplegando versión $(Build.BuildId) en DEV"
-                    echo "APP_ENVIRONMENT=DEV"
+                    echo "Desplegando versión $(Build.BuildId) en ambiente DEV..."
+                    echo "Configurando variable APP_ENVIRONMENT=DEV"
                   displayName: 'Simular Despliegue DEV'
 
-  # 3. AMBIENTE QA
+  # -------------------------------------------------------------
+  # STAGE 3: DESPLIEGUE A QA
+  # -------------------------------------------------------------
   - stage: QA
     displayName: 'Deploy QA'
     dependsOn: DEV
@@ -67,11 +73,13 @@ stages:
             deploy:
               steps:
                 - script: |
-                    echo "Desplegando versión $(Build.BuildId) en QA"
-                    echo "APP_ENVIRONMENT=QA"
+                    echo "Desplegando versión $(Build.BuildId) en ambiente QA..."
+                    echo "Configurando variable APP_ENVIRONMENT=QA"
                   displayName: 'Simular Despliegue QA'
 
-  # 4. AMBIENTE PDN (Protegido)
+  # -------------------------------------------------------------
+  # STAGE 4: DESPLIEGUE A PDN (Requiere Aprobación Manual)
+  # -------------------------------------------------------------
   - stage: PDN
     displayName: 'Deploy PDN'
     dependsOn: QA
@@ -84,6 +92,6 @@ stages:
             deploy:
               steps:
                 - script: |
-                    echo "Desplegando versión $(Build.BuildId) en PDN"
-                    echo "APP_ENVIRONMENT=PDN"
+                    echo "Desplegando versión $(Build.BuildId) en ambiente PDN..."
+                    echo "Configurando variable APP_ENVIRONMENT=PDN"
                   displayName: 'Simular Despliegue PDN'
